@@ -1,0 +1,154 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Backgrounds */
+    --background: 250 100% 98%;
+    --foreground: 250 20% 12%;
+
+    /* Cards & Glass */
+    --card: 0 0% 100%;
+    --card-foreground: 250 20% 12%;
+    --glass: 250 100% 98% / 0.7;
+
+    /* Popovers */
+    --popover: 0 0% 100%;
+    --popover-foreground: 250 20% 12%;
+
+    /* Primary - Trust Purple-Blue */
+    --primary: 255 70% 60%;
+    --primary-glow: 260 80% 70%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Warm Accent */
+    --secondary: 15 85% 65%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Muted */
+    --muted: 250 30% 95%;
+    --muted-foreground: 250 10% 45%;
+
+    /* Accent - Coral Call-to-Action */
+    --accent: 15 85% 65%;
+    --accent-foreground: 0 0% 100%;
+    --accent-glow: 15 100% 75%;
+
+    /* Trust Levels */
+    --trust-high: 150 70% 55%;
+    --trust-medium: 45 85% 60%;
+    --trust-low: 220 15% 60%;
+    --trust-verified: 150 70% 55%;
+
+    /* Status */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 150 70% 55%;
+    --warning: 45 85% 60%;
+
+    /* Borders & Inputs */
+    --border: 250 25% 88%;
+    --input: 250 25% 88%;
+    --ring: 255 70% 60%;
+
+    /* Radius */
+    --radius: 1rem;
+
+    /* Gradients */
+    --gradient-trust: linear-gradient(135deg, hsl(255 70% 60%), hsl(220 80% 65%));
+    --gradient-accent: linear-gradient(135deg, hsl(15 85% 65%), hsl(30 90% 70%));
+    --gradient-hero: linear-gradient(180deg, hsl(250 100% 98%), hsl(250 100% 96%));
+    
+    /* Shadows */
+    --shadow-glass: 0 8px 32px hsl(255 70% 60% / 0.1);
+    --shadow-trust: 0 4px 20px hsl(255 70% 60% / 0.15);
+    --shadow-hover: 0 12px 40px hsl(255 70% 60% / 0.2);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 250 25% 8%;
+    --foreground: 250 10% 95%;
+
+    --card: 250 20% 12%;
+    --card-foreground: 250 10% 95%;
+    --glass: 250 20% 12% / 0.7;
+
+    --popover: 250 20% 12%;
+    --popover-foreground: 250 10% 95%;
+
+    --primary: 255 70% 65%;
+    --primary-glow: 260 80% 75%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 15 80% 60%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 250 20% 18%;
+    --muted-foreground: 250 10% 60%;
+
+    --accent: 15 80% 60%;
+    --accent-foreground: 0 0% 100%;
+    --accent-glow: 15 90% 70%;
+
+    --trust-high: 150 65% 50%;
+    --trust-medium: 45 80% 55%;
+    --trust-low: 220 15% 50%;
+    --trust-verified: 150 65% 50%;
+
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 150 65% 50%;
+    --warning: 45 80% 55%;
+
+    --border: 250 20% 20%;
+    --input: 250 20% 20%;
+    --ring: 255 70% 65%;
+
+    --gradient-trust: linear-gradient(135deg, hsl(255 70% 65%), hsl(220 80% 70%));
+    --gradient-accent: linear-gradient(135deg, hsl(15 80% 60%), hsl(30 85% 65%));
+    --gradient-hero: linear-gradient(180deg, hsl(250 25% 8%), hsl(250 25% 10%));
+    
+    --shadow-glass: 0 8px 32px hsl(0 0% 0% / 0.3);
+    --shadow-trust: 0 4px 20px hsl(255 70% 65% / 0.25);
+    --shadow-hover: 0 12px 40px hsl(255 70% 65% / 0.3);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-['Inter',sans-serif] antialiased;
+    background: linear-gradient(180deg, hsl(var(--background)), hsl(250 100% 96%));
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/70 dark:bg-card/70 backdrop-blur-xl border border-white/20 dark:border-white/10;
+    box-shadow: var(--shadow-glass);
+  }
+
+  .trust-glow {
+    box-shadow: 0 0 30px hsl(var(--primary) / 0.3);
+  }
+
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1;
+    transition: var(--transition-smooth);
+  }
+
+  .hover-lift:hover {
+    box-shadow: var(--shadow-hover);
+  }
+}
