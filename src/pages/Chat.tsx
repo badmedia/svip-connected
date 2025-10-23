@@ -262,8 +262,14 @@ const Chat = () => {
       // Get chat participants
       const participants = [chatData.requester_id, chatData.helper_id];
 
-      // Initialize chat encryption (without database dependency for now)
-      await encryptionService.generateChatKey(chatData.id, participants);
+      // Check if we have a valid chat key
+      const hasValidKey = await encryptionService.hasValidChatKey(chatData.id);
+      if (!hasValidKey) {
+        console.log("No valid chat key found, generating new one for:", chatData.id);
+        await encryptionService.generateChatKey(chatData.id, participants);
+      } else {
+        console.log("Valid chat key found for:", chatData.id);
+      }
 
       // Set encryption status
       setEncryptionStatus({
@@ -333,7 +339,10 @@ const Chat = () => {
                   chatId: chat.id, 
                   encryptedMessage: msg.message.substring(0, 50) + "..." 
                 });
-                return { ...msg, message: "[Encrypted message - decryption failed]" };
+                
+                // If this is a persistent decryption failure, we might need to regenerate the chat key
+                // For now, show a more helpful message
+                return { ...msg, message: "[Encrypted message - decryption failed. Please refresh the page or start a new chat.]" };
               }
             }
             return msg;
@@ -450,6 +459,37 @@ const Chat = () => {
     }
   };
 
+  // Method to fix encryption issues by regenerating chat key
+  const fixEncryptionIssues = async () => {
+    if (!chat || !user) return;
+    
+    try {
+      console.log("Attempting to fix encryption issues for chat:", chat.id);
+      
+      // Clear existing chat key
+      await encryptionService.clearChatKey(chat.id);
+      
+      // Regenerate chat key
+      const participants = [chat.requester_id, chat.helper_id];
+      await encryptionService.generateChatKey(chat.id, participants);
+      
+      // Refresh messages
+      await fetchMessages();
+      
+      toast({
+        title: "Encryption Fixed",
+        description: "Chat encryption has been reset. Try sending a new message.",
+      });
+    } catch (error) {
+      console.error("Error fixing encryption:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fix encryption issues",
+        variant: "destructive",
+      });
+    }
+  };
+
   const markAsCompleted = async () => {
     if (!chat || !user) return;
     try {
@@ -536,6 +576,17 @@ const Chat = () => {
                 <Shield className="w-4 h-4" />
                 <span className="text-xs">Not Encrypted</span>
               </div>
+            )}
+            {isEncrypted && (
+              <Button 
+                onClick={fixEncryptionIssues} 
+                variant="outline" 
+                size="sm"
+                className="text-xs"
+              >
+                <Shield className="w-3 h-3 mr-1" />
+                Fix Encryption
+              </Button>
             )}
             {chat?.tasks.status === "open" && (
               <Button onClick={markAsCompleted} className="bg-green-600 hover:bg-green-700">

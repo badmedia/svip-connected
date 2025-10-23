@@ -301,6 +301,35 @@ export class EncryptionService {
     return await this.generateChatKey(chatId, participants);
   }
 
+  // Check if chat key exists and is valid
+  async hasValidChatKey(chatId: string): Promise<boolean> {
+    try {
+      if (this.chatKeys.has(chatId)) {
+        return true;
+      }
+      
+      // Check localStorage
+      const storedKey = localStorage.getItem(`chat_key_${chatId}`);
+      if (storedKey) {
+        const keyData = JSON.parse(storedKey);
+        const key = await crypto.subtle.importKey(
+          "raw",
+          this.base64ToArrayBuffer(keyData.key),
+          { name: "AES-GCM" },
+          false,
+          ["encrypt", "decrypt"]
+        );
+        this.chatKeys.set(chatId, key);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error("Error checking chat key validity:", error);
+      return false;
+    }
+  }
+
   // Utility methods
   private arrayBufferToBase64(buffer: ArrayBuffer): string {
     const bytes = new Uint8Array(buffer);
