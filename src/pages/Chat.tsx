@@ -312,16 +312,27 @@ const Chat = () => {
                   const iv = parts[1];
                   const encryptedMessage = parts.slice(2).join(':'); // Join remaining parts
                   
+                  console.log("Attempting to decrypt message:", { keyId, iv: iv.substring(0, 10) + "...", chatId: chat.id });
+                  
                   const decryptedText = await encryptionService.decryptMessage(
                     encryptedMessage,
                     chat.id,
                     iv
                   );
                   
+                  console.log("Successfully decrypted message");
                   return { ...msg, message: decryptedText };
+                } else {
+                  console.error("Invalid encrypted message format:", msg.message);
+                  return { ...msg, message: "[Encrypted message - invalid format]" };
                 }
               } catch (decryptError) {
                 console.error("Failed to decrypt message:", decryptError);
+                console.error("Message details:", { 
+                  messageId: msg.id, 
+                  chatId: chat.id, 
+                  encryptedMessage: msg.message.substring(0, 50) + "..." 
+                });
                 return { ...msg, message: "[Encrypted message - decryption failed]" };
               }
             }

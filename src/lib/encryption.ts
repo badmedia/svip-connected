@@ -72,6 +72,12 @@ export class EncryptionService {
   // Generate shared key for chat using AES-GCM
   async generateChatKey(chatId: string, participants: string[]): Promise<string> {
     try {
+      // Check if key already exists
+      if (this.chatKeys.has(chatId)) {
+        console.log("Chat key already exists for:", chatId);
+        return chatId;
+      }
+
       const key = await crypto.subtle.generateKey(
         { name: "AES-GCM", length: 256 },
         true,
@@ -81,8 +87,21 @@ export class EncryptionService {
       // Store the key in memory
       this.chatKeys.set(chatId, key);
       
-      // In production, you would encrypt this key with each participant's public key
-      // and store it in the database
+      // Save to localStorage for persistence
+      try {
+        const exportedKey = await crypto.subtle.exportKey("raw", key);
+        const keyData = {
+          key: this.arrayBufferToBase64(exportedKey),
+          chatId,
+          participants,
+          timestamp: Date.now()
+        };
+        localStorage.setItem(`chat_key_${chatId}`, JSON.stringify(keyData));
+        console.log("Chat key saved to localStorage for:", chatId);
+      } catch (error) {
+        console.warn("Failed to save chat key to localStorage:", error);
+      }
+      
       return chatId;
     } catch (error) {
       console.error("Error generating chat key:", error);
@@ -93,6 +112,8 @@ export class EncryptionService {
   // Encrypt message for chat
   async encryptMessage(message: string, chatId: string): Promise<EncryptedMessage> {
     try {
+      // Ensure chat key exists
+      await this.ensureChatKey(chatId);
       const chatKey = await this.getChatKey(chatId);
       const encodedMessage = new TextEncoder().encode(message);
       
@@ -119,6 +140,8 @@ export class EncryptionService {
   // Decrypt message
   async decryptMessage(encryptedMessage: string, chatId: string, iv: string): Promise<string> {
     try {
+      // Ensure chat key exists
+      await this.ensureChatKey(chatId);
       const chatKey = await this.getChatKey(chatId);
       const encryptedBuffer = this.base64ToArrayBuffer(encryptedMessage);
       const ivBuffer = this.base64ToArrayBuffer(iv);
@@ -202,22 +225,80 @@ export class EncryptionService {
     }
   }
 
-  // Get chat key (load from database if not in memory)
+  // Ensure chat key exists (create if needed)
+  private async ensureChatKey(chatId: string): Promise<void> {
+    if (!this.chatKeys.has(chatId)) {
+      // Try to load from localStorage first
+      const storedKey = localStorage.getItem(`chat_key_${chatId}`);
+      if (!storedKey) {
+        // Generate new key if none exists
+        await this.generateChatKey(chatId, []);
+      }
+    }
+  }
+
+  // Get chat key (load from localStorage if not in memory)
   private async getChatKey(chatId: string): Promise<CryptoKey> {
     if (this.chatKeys.has(chatId)) {
       return this.chatKeys.get(chatId)!;
     }
 
-    // In production, you would fetch and decrypt the key from the database
-    // For now, generate a new key
+    // Try to load from localStorage first
+    try {
+      const storedKey = localStorage.getItem(`chat_key_${chatId}`);
+      if (storedKey) {
+        const keyData = JSON.parse(storedKey);
+        const key = await crypto.subtle.importKey(
+          "raw",
+          this.base64ToArrayBuffer(keyData.key),
+          { name: "AES-GCM" },
+          false,
+          ["encrypt", "decrypt"]
+        );
+        this.chatKeys.set(chatId, key);
+        return key;
+      }
+    } catch (error) {
+      console.warn("Failed to load chat key from localStorage:", error);
+    }
+
+    // Generate new key only if none exists
     const key = await crypto.subtle.generateKey(
       { name: "AES-GCM", length: 256 },
       true,
       ["encrypt", "decrypt"]
     );
-    
+
+    // Store the key for future use
     this.chatKeys.set(chatId, key);
+    
+    // Save to localStorage
+    try {
+      const exportedKey = await crypto.subtle.exportKey("raw", key);
+      const keyData = {
+        key: this.arrayBufferToBase64(exportedKey),
+        chatId,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(`chat_key_${chatId}`, JSON.stringify(keyData));
+    } catch (error) {
+      console.warn("Failed to save chat key to localStorage:", error);
+    }
+
     return key;
+  }
+
+  // Clear chat key (for debugging/regeneration)
+  async clearChatKey(chatId: string): Promise<void> {
+    this.chatKeys.delete(chatId);
+    localStorage.removeItem(`chat_key_${chatId}`);
+    console.log("Cleared chat key for:", chatId);
+  }
+
+  // Regenerate chat key (for debugging)
+  async regenerateChatKey(chatId: string, participants: string[]): Promise<string> {
+    await this.clearChatKey(chatId);
+    return await this.generateChatKey(chatId, participants);
   }
 
   // Utility methods
