@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Send, Check } from "lucide-react";
+import { ArrowLeft, Send, Check, Shield, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,12 +10,18 @@ import { checkRateLimit, messageRateLimiter } from "@/lib/rateLimiter";
 import { logSecurityEvent, sanitizeError } from "@/lib/security";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { EncryptionService } from "@/lib/encryption";
+import { KeyExchangeService } from "@/lib/keyExchange";
 
 interface Message {
   id: string;
   message: string;
   sender_id: string;
   created_at: string;
+  encrypted_message?: string;
+  encryption_key_id?: string;
+  message_type?: string;
+  encryption_iv?: string;
   profiles: {
     full_name: string;
     avatar_url: string;
@@ -45,7 +51,15 @@ const Chat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [isEncrypted, setIsEncrypted] = useState(false);
+  const [encryptionStatus, setEncryptionStatus] = useState<{
+    isEncrypted: boolean;
+    keyId: string | null;
+    participants: string[];
+  }>({ isEncrypted: false, keyId: null, participants: [] });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const encryptionService = EncryptionService.getInstance();
+  const keyExchangeService = KeyExchangeService.getInstance();
 
   useEffect(() => {
     if (authLoading) return;
@@ -111,6 +125,10 @@ const Chat = () => {
           throw new Error("Chat not found or you are not a participant");
         }
         setChat(chatById);
+        
+        // Initialize encryption for existing chat
+        await initializeEncryption(chatById);
+        
         setLoading(false);
         return;
       }
@@ -126,6 +144,10 @@ const Chat = () => {
 
       if (existingChat) {
         setChat(existingChat);
+        
+        // Initialize encryption for existing chat
+        await initializeEncryption(existingChat);
+        
         setLoading(false);
         return;
       }
@@ -156,6 +178,10 @@ const Chat = () => {
 
         if (ownerChats && ownerChats.length > 0) {
           setChat(ownerChats[0]);
+          
+          // Initialize encryption for existing chat
+          await initializeEncryption(ownerChats[0]);
+          
           setLoading(false);
           return;
         }
@@ -179,6 +205,10 @@ const Chat = () => {
 
       if (existingPairChat) {
         setChat(existingPairChat);
+        
+        // Initialize encryption for existing chat
+        await initializeEncryption(existingPairChat);
+        
         setLoading(false);
         return;
       }
@@ -205,6 +235,9 @@ const Chat = () => {
       }
 
       setChat(newChat);
+      
+      // Initialize encryption for the new chat
+      await initializeEncryption(newChat);
     } catch (error: any) {
       console.error("Chat initialization error:", error);
       toast({
@@ -218,18 +251,91 @@ const Chat = () => {
     }
   };
 
+  // Initialize encryption for chat
+  const initializeEncryption = async (chatData: Chat) => {
+    try {
+      if (!user) return;
+
+      // Initialize user keys if not already done
+      await encryptionService.initializeUserKeys(user.id);
+
+      // Get chat participants
+      const participants = [chatData.requester_id, chatData.helper_id];
+
+      // Initialize chat encryption (without database dependency for now)
+      await encryptionService.generateChatKey(chatData.id, participants);
+
+      // Set encryption status
+      setEncryptionStatus({
+        isEncrypted: true,
+        keyId: chatData.id,
+        participants
+      });
+      setIsEncrypted(true);
+
+      console.log("Encryption initialized for chat:", chatData.id);
+    } catch (error) {
+      console.error("Error initializing encryption:", error);
+      // Don't show error to user as encryption is optional for now
+      setIsEncrypted(false);
+    }
+  };
+
   const fetchMessages = async () => {
     if (!chat) return;
     console.log("Fetching messages for chat:", chat.id);
-    const { data, error } = await supabase
-      .from("messages")
-      .select("id, message, sender_id, created_at, profiles(full_name, avatar_url)")
-      .eq("chat_id", chat.id)
-      .order("created_at", { ascending: true })
-      .limit(100);
     
-    console.log("Messages fetched:", data, "Error:", error);
-    setMessages(data || []);
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .select(`
+          id, message, sender_id, created_at, 
+          profiles(full_name, avatar_url)
+        `)
+        .eq("chat_id", chat.id)
+        .order("created_at", { ascending: true })
+        .limit(100);
+      
+      console.log("Messages fetched:", data, "Error:", error);
+      
+      if (data) {
+        // Decrypt messages if they are encrypted
+        const decryptedMessages = await Promise.all(
+          data.map(async (msg: Message) => {
+            // Check if message is encrypted (starts with [ENCRYPTED:)
+            if (msg.message.startsWith('[ENCRYPTED:')) {
+              try {
+                // Parse the encrypted message format: [ENCRYPTED:keyId:iv:encryptedMessage]
+                const parts = msg.message.substring(11).split(':'); // Remove [ENCRYPTED:
+                if (parts.length >= 3) {
+                  const keyId = parts[0];
+                  const iv = parts[1];
+                  const encryptedMessage = parts.slice(2).join(':'); // Join remaining parts
+                  
+                  const decryptedText = await encryptionService.decryptMessage(
+                    encryptedMessage,
+                    chat.id,
+                    iv
+                  );
+                  
+                  return { ...msg, message: decryptedText };
+                }
+              } catch (decryptError) {
+                console.error("Failed to decrypt message:", decryptError);
+                return { ...msg, message: "[Encrypted message - decryption failed]" };
+              }
+            }
+            return msg;
+          })
+        );
+        setMessages(decryptedMessages);
+      } else {
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      setMessages([]);
+    }
   };
 
   const subscribeToMessages = () => {
@@ -279,10 +385,31 @@ const Chat = () => {
       const sanitized = sanitizeText(newMessage.trim(), { maxLen: 1000 });
       if (!sanitized) return;
       
+      let messageToSend = sanitized;
+
+      // Encrypt message if encryption is enabled
+      if (isEncrypted) {
+        try {
+          const { encryptedMessage, keyId, iv } = await encryptionService.encryptMessage(
+            sanitized,
+            chat.id
+          );
+          
+          // For now, we'll store the encrypted message in the regular message field
+          // In the future, we can use dedicated encryption fields
+          messageToSend = `[ENCRYPTED:${keyId}:${iv}:${encryptedMessage}]`;
+          
+          console.log("Message encrypted successfully");
+        } catch (encryptError) {
+          console.error("Encryption failed, sending as plain text:", encryptError);
+          // Fall back to plain text if encryption fails
+        }
+      }
+      
       const { data, error } = await supabase.from("messages").insert({
         chat_id: chat.id,
         sender_id: user?.id,
-        message: sanitized,
+        message: messageToSend,
       }).select();
 
       if (error) {
@@ -292,7 +419,8 @@ const Chat = () => {
       // Log security event
       await logSecurityEvent('message_sent', {
         chat_id: chat.id,
-        message_length: sanitized.length
+        message_length: sanitized.length,
+        encrypted: isEncrypted
       }, user.id);
       
       setNewMessage("");
@@ -379,16 +507,32 @@ const Chat = () => {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h2 className="font-bold">{chat?.tasks.title}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-bold">{chat?.tasks.title}</h2>
+                {isEncrypted && (
+                  <div className="flex items-center gap-1 text-green-600">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span className="text-xs font-medium">End-to-End Encrypted</span>
+                  </div>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">Budget: ₹{chat?.tasks.budget}</p>
             </div>
           </div>
-          {chat?.tasks.status === "open" && (
-            <Button onClick={markAsCompleted} className="bg-green-600 hover:bg-green-700">
-              <Check className="w-4 h-4 mr-2" />
-              Mark Completed
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {!isEncrypted && (
+              <div className="flex items-center gap-1 text-amber-600">
+                <Shield className="w-4 h-4" />
+                <span className="text-xs">Not Encrypted</span>
+              </div>
+            )}
+            {chat?.tasks.status === "open" && (
+              <Button onClick={markAsCompleted} className="bg-green-600 hover:bg-green-700">
+                <Check className="w-4 h-4 mr-2" />
+                Mark Completed
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Messages */}

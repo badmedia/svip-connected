@@ -107,15 +107,15 @@ export const PostTaskModal = ({ open, onOpenChange, onTaskCreated }: PostTaskMod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Post a Quick Task</DialogTitle>
+          <DialogTitle className="text-lg sm:text-xl">Post a Quick Task</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="task_type">I want to...</Label>
+            <Label htmlFor="task_type" className="text-sm font-medium">I want to...</Label>
             <Select value={formData.task_type} onValueChange={(value) => setFormData({ ...formData, task_type: value })}>
-              <SelectTrigger>
+              <SelectTrigger className="h-10">
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
@@ -126,9 +126,9 @@ export const PostTaskModal = ({ open, onOpenChange, onTaskCreated }: PostTaskMod
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
+            <Label htmlFor="category" className="text-sm font-medium">Category</Label>
             <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-              <SelectTrigger>
+              <SelectTrigger className="h-10">
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
@@ -142,30 +142,32 @@ export const PostTaskModal = ({ open, onOpenChange, onTaskCreated }: PostTaskMod
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="title">Task Title</Label>
+            <Label htmlFor="title" className="text-sm font-medium">Task Title</Label>
             <Input
               id="title"
               placeholder="e.g., Need PPT for Marketing presentation"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="h-10"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description" className="text-sm font-medium">Description</Label>
             <Textarea
               id="description"
               placeholder="Describe what you need or what you can do..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
+              className="resize-none"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="budget">Budget (₹20 - ₹200)</Label>
+            <Label htmlFor="budget" className="text-sm font-medium">Budget (₹20 - ₹200)</Label>
             <Input
               id="budget"
               type="number"
@@ -173,11 +175,12 @@ export const PostTaskModal = ({ open, onOpenChange, onTaskCreated }: PostTaskMod
               max="200"
               value={formData.budget}
               onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+              className="h-10"
               required
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full h-11" disabled={loading}>
             {loading ? "Posting..." : "Post Task"}
           </Button>
         </form>

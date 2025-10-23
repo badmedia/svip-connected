@@ -20,6 +20,7 @@ import { AdvancedSearch } from "@/components/AdvancedSearch";
 import { SecurityDashboard } from "@/components/SecurityDashboard";
 import { useToast } from "@/hooks/use-toast";
 import { UserChats } from "@/components/UserChats";
+import { EncryptionDemo } from "@/components/EncryptionDemo";
 import { useAdmin } from "@/hooks/useAdmin";
 
 type TaskType = "offer" | "request";
@@ -168,110 +169,120 @@ const Dashboard = ({ initialTab }: DashboardProps) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-screen w-20 lg:w-64 glass-card border-r border-border flex flex-col items-center lg:items-start p-4 space-y-6">
-        <div className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent hidden lg:block">
+      <aside className="fixed left-0 top-0 h-screen w-16 sm:w-20 lg:w-64 glass-card border-r border-border flex flex-col items-center lg:items-start p-2 sm:p-4 space-y-4 sm:space-y-6 z-50">
+        <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent hidden lg:block">
           S.v.i.p
         </div>
-        <div className="text-xl font-bold lg:hidden">S</div>
+        <div className="text-lg sm:text-xl font-bold lg:hidden">S</div>
 
-        <nav className="flex-1 w-full space-y-2">
+        <nav className="flex-1 w-full space-y-1 sm:space-y-2">
           <Button 
             variant={activeTab === "tasks" ? "secondary" : "ghost"} 
-            className="w-full justify-center lg:justify-start" 
+            className="w-full justify-center lg:justify-start h-10 sm:h-11" 
             onClick={() => setActiveTab("tasks")}
           >
-            <Home className="w-5 h-5" />
+            <Home className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="hidden lg:inline ml-2">Tasks</span>
           </Button>
           <Button 
             variant={activeTab === "smart-matching" ? "secondary" : "ghost"} 
-            className="w-full justify-center lg:justify-start" 
+            className="w-full justify-center lg:justify-start h-10 sm:h-11" 
             onClick={() => setActiveTab("smart-matching")}
           >
-            <Sparkles className="w-5 h-5" />
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="hidden lg:inline ml-2">Smart Match</span>
           </Button>
           <Button 
             variant={activeTab === "study-groups" ? "secondary" : "ghost"} 
-            className="w-full justify-center lg:justify-start" 
+            className="w-full justify-center lg:justify-start h-10 sm:h-11" 
             onClick={() => setActiveTab("study-groups")}
           >
-            <BookOpen className="w-5 h-5" />
+            <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="hidden lg:inline ml-2">Study Groups</span>
           </Button>
           <Button 
             variant={activeTab === "notifications" ? "secondary" : "ghost"} 
-            className="w-full justify-center lg:justify-start relative" 
+            className="w-full justify-center lg:justify-start relative h-10 sm:h-11" 
             onClick={() => setActiveTab("notifications")}
           >
-            <Bell className="w-5 h-5" />
+            <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="hidden lg:inline ml-2">Notifications</span>
             {unreadNotifications > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+              <Badge className="absolute -top-1 -right-1 h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center p-0 text-xs">
                 {unreadNotifications}
               </Badge>
             )}
           </Button>
           <Button 
             variant={activeTab === "analytics" ? "secondary" : "ghost"} 
-            className="w-full justify-center lg:justify-start" 
+            className="w-full justify-center lg:justify-start h-10 sm:h-11" 
             onClick={() => setActiveTab("analytics")}
           >
-            <BarChart3 className="w-5 h-5" />
+            <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="hidden lg:inline ml-2">Analytics</span>
           </Button>
           <Button 
             variant={activeTab === "gamification" ? "secondary" : "ghost"} 
-            className="w-full justify-center lg:justify-start" 
+            className="w-full justify-center lg:justify-start h-10 sm:h-11" 
             onClick={() => setActiveTab("gamification")}
           >
-            <Trophy className="w-5 h-5" />
+            <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="hidden lg:inline ml-2">Achievements</span>
           </Button>
           <Button 
             variant={activeTab === "chats" ? "secondary" : "ghost"} 
-            className="w-full justify-center lg:justify-start" 
+            className="w-full justify-center lg:justify-start h-10 sm:h-11" 
             onClick={() => setActiveTab("chats")}
           >
-            <MessageSquare className="w-5 h-5" />
+            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="hidden lg:inline ml-2">Chats</span>
+          </Button>
+          
+          <Button 
+            variant={activeTab === "encryption" ? "secondary" : "ghost"} 
+            className="w-full justify-center lg:justify-start h-10 sm:h-11" 
+            onClick={() => setActiveTab("encryption")}
+          >
+            <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden lg:inline ml-2">Encryption</span>
           </Button>
 
           {isAdmin && (
             <Button 
               variant={activeTab === "security" ? "secondary" : "ghost"} 
-              className="w-full justify-center lg:justify-start" 
+              className="w-full justify-center lg:justify-start h-10 sm:h-11" 
               onClick={() => setActiveTab("security")}
             >
-              <Shield className="w-5 h-5" />
+              <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="hidden lg:inline ml-2">Security</span>
             </Button>
           )}
-          <Button variant="ghost" className="w-full justify-center lg:justify-start" onClick={() => navigate("/profile")}>
-            <UserIcon className="w-5 h-5" />
+          <Button variant="ghost" className="w-full justify-center lg:justify-start h-10 sm:h-11" onClick={() => navigate("/profile")}>
+            <UserIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="hidden lg:inline ml-2">Profile</span>
           </Button>
         </nav>
 
-        <Button variant="ghost" className="w-full justify-center lg:justify-start text-destructive" onClick={signOut}>
-          <LogOut className="w-5 h-5" />
+        <Button variant="ghost" className="w-full justify-center lg:justify-start text-destructive h-10 sm:h-11" onClick={signOut}>
+          <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
           <span className="hidden lg:inline ml-2">Logout</span>
         </Button>
       </aside>
 
       {/* Main Content */}
-      <main className="ml-20 lg:ml-64 p-6">
+      <main className="ml-16 sm:ml-20 lg:ml-64 p-3 sm:p-6">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-4xl font-bold mb-2">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2">
                   SVIPit — S.V.I.P: Skill Value Interaction Platform
                 </h1>
-                <div className="text-sm text-muted-foreground mb-1">
+                <div className="text-xs sm:text-sm text-muted-foreground mb-1">
                   {activeTab === "tasks" && "Task Feed"}
                   {activeTab === "chats" && "Your Chats"}
+                  {activeTab === "encryption" && "Encryption Test"}
                   {activeTab === "smart-matching" && "Smart Matching"}
                   {activeTab === "study-groups" && "Study Groups"}
                   {activeTab === "notifications" && "Notifications"}
@@ -279,7 +290,7 @@ const Dashboard = ({ initialTab }: DashboardProps) => {
                   {activeTab === "gamification" && "Achievements"}
                   {activeTab === "security" && "Security Dashboard"}
                 </div>
-                <p className="text-muted-foreground">
+                <p className="text-sm sm:text-base text-muted-foreground">
                   {activeTab === "tasks" && "Got 10 minutes? Earn ₹50. Help a classmate. Build trust."}
                   {activeTab === "chats" && "Conversations for tasks you're part of"}
                   {activeTab === "smart-matching" && "AI-powered task recommendations based on your skills"}
@@ -290,7 +301,7 @@ const Dashboard = ({ initialTab }: DashboardProps) => {
                   {activeTab === "security" && "Monitor security events and system health"}
                 </p>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 <BadgeDisplay trustScore={user?.user_metadata?.trust_score || 0} />
               </div>
             </div>
@@ -300,18 +311,18 @@ const Dashboard = ({ initialTab }: DashboardProps) => {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsContent value="tasks" className="space-y-6">
           {/* Search and Filters */}
-          <div className="mb-6 space-y-4">
+          <div className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
             <div className="relative">
-              <Search className="absolute left-3 top-3 w-5 h-5 text-muted-foreground" />
+              <Search className="absolute left-3 top-3 w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
               <Input
                 placeholder="Search tasks..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-9 sm:pl-10 h-10 sm:h-11"
               />
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-2">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
               {[
                 { key: "all", label: "All Tasks" },
                 { key: "my-college", label: "My College" },
@@ -322,7 +333,7 @@ const Dashboard = ({ initialTab }: DashboardProps) => {
                   key={filter.key}
                   variant={activeFilter === filter.key ? "default" : "outline"}
                   onClick={() => setActiveFilter(filter.key as any)}
-                  className="whitespace-nowrap"
+                  className="whitespace-nowrap h-9 sm:h-10 text-xs sm:text-sm"
                 >
                   {filter.label}
                 </Button>
@@ -345,7 +356,7 @@ const Dashboard = ({ initialTab }: DashboardProps) => {
               <p className="text-muted-foreground">Be the first to post a task!</p>
             </motion.div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 gap-3 sm:gap-4">
               {filteredTasks.map((task, index) => (
                 <motion.div
                   key={task.id}
@@ -362,6 +373,10 @@ const Dashboard = ({ initialTab }: DashboardProps) => {
 
               <TabsContent value="chats">
                 <UserChats />
+              </TabsContent>
+
+              <TabsContent value="encryption">
+                <EncryptionDemo />
               </TabsContent>
 
             <TabsContent value="smart-matching">
@@ -399,9 +414,9 @@ const Dashboard = ({ initialTab }: DashboardProps) => {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsPostModalOpen(true)}
-        className="fixed bottom-6 right-6 w-16 h-16 rounded-full bg-gradient-to-r from-primary to-primary-glow shadow-2xl flex items-center justify-center"
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-r from-primary to-primary-glow shadow-2xl flex items-center justify-center z-40"
       >
-        <Plus className="w-8 h-8 text-primary-foreground" />
+        <Plus className="w-6 h-6 sm:w-8 sm:h-8 text-primary-foreground" />
       </motion.button>
       )}
 

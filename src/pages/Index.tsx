@@ -39,23 +39,23 @@ const Index = () => {
     <div className="min-h-screen">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 glass-card border-b border-border/50">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Shield className="w-8 h-8 text-primary" />
-            <span className="text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+            <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+            <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
               S.v.i.p
             </span>
           </div>
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden sm:flex items-center space-x-4 lg:space-x-8">
             <button
               onClick={() => scrollToSection("features")}
-              className="text-muted-foreground hover:text-primary transition-colors"
+              className="text-sm lg:text-base text-muted-foreground hover:text-primary transition-colors"
             >
               Features
             </button>
             <button
               onClick={() => scrollToSection("how-it-works")}
-              className="text-muted-foreground hover:text-primary transition-colors"
+              className="text-sm lg:text-base text-muted-foreground hover:text-primary transition-colors"
             >
               How It Works
             </button>
@@ -88,9 +88,9 @@ const Index = () => {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
+      <section className="pt-24 sm:pt-32 pb-16 sm:pb-20 px-4 sm:px-6">
         <div className="container mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 items-center">
             <div className="space-y-8 animate-fade-in">
               <div className="inline-flex items-center space-x-2 glass-card px-4 py-2 rounded-full">
                 <Sparkles className="w-4 h-4 text-accent" />
@@ -99,14 +99,14 @@ const Index = () => {
                 </span>
               </div>
               
-              <h1 className="text-5xl md:text-6xl font-bold leading-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
                 Find someone who{" "}
                 <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                   gets it.
                 </span>
               </h1>
               
-              <p className="text-xl text-muted-foreground leading-relaxed">
+              <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed">
                 S.v.i.p helps students connect locally to exchange skills, favors, or time — 
                 verified through their college ID. A campus full of helpers, one click away.
               </p>
@@ -128,19 +128,19 @@ const Index = () => {
                 </GlowButton>
               </div>
 
-              <div className="flex items-center space-x-8 pt-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-8 pt-4">
                 <div className="flex items-center space-x-2">
-                  <Users className="w-5 h-5 text-primary" />
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                   <div>
-                    <p className="text-2xl font-bold">2,500+</p>
-                    <p className="text-sm text-muted-foreground">Active Students</p>
+                    <p className="text-xl sm:text-2xl font-bold">2,500+</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Active Students</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Heart className="w-5 h-5 text-accent" />
+                  <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
                   <div>
-                    <p className="text-2xl font-bold">10,000+</p>
-                    <p className="text-sm text-muted-foreground">Favors Exchanged</p>
+                    <p className="text-xl sm:text-2xl font-bold">10,000+</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Favors Exchanged</p>
                   </div>
                 </div>
               </div>
@@ -164,16 +164,16 @@ const Index = () => {
       </section>
 
       {/* Trust Map Section */}
-      <section className="py-20 px-6 bg-muted/30">
+      <section className="py-16 sm:py-20 px-4 sm:px-6 bg-muted/30">
         <div className="container mx-auto">
-          <div className="text-center space-y-4 mb-12 animate-fade-in">
-            <h2 className="text-4xl font-bold">
+          <div className="text-center space-y-4 mb-8 sm:mb-12 animate-fade-in">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold">
               Growing Across{" "}
               <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 Bengaluru
               </span>
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
               Watch our trust network light up as students connect, help, and grow together
             </p>
           </div>
@@ -182,16 +182,16 @@ const Index = () => {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 px-6">
+      <section id="features" className="py-16 sm:py-20 px-4 sm:px-6">
         <div className="container mx-auto">
-          <div className="text-center space-y-4 mb-16 animate-fade-in">
-            <h2 className="text-4xl font-bold">Why Students Love S.v.i.p</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <div className="text-center space-y-4 mb-12 sm:mb-16 animate-fade-in">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold">Why Students Love S.v.i.p</h2>
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
               Not a marketplace. A movement.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             <FeatureCard
               icon={Shield}
               title="Trust First"
@@ -227,14 +227,14 @@ const Index = () => {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-20 px-6 bg-muted/30">
+      <section id="how-it-works" className="py-16 sm:py-20 px-4 sm:px-6 bg-muted/30">
         <div className="container mx-auto">
-          <div className="text-center space-y-4 mb-16">
-            <h2 className="text-4xl font-bold">How It Works</h2>
-            <p className="text-lg text-muted-foreground">Simple, trust-based, and student-friendly</p>
+          <div className="text-center space-y-4 mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold">How It Works</h2>
+            <p className="text-base sm:text-lg text-muted-foreground">Simple, trust-based, and student-friendly</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
             {[
               {
                 step: "01",
@@ -268,15 +268,15 @@ const Index = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6">
+      <section className="py-16 sm:py-20 px-4 sm:px-6">
         <div className="container mx-auto">
-          <div className="glass-card rounded-3xl p-12 text-center space-y-6 relative overflow-hidden">
+          <div className="glass-card rounded-3xl p-6 sm:p-8 lg:p-12 text-center space-y-6 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-accent/10" />
             <div className="relative z-10 space-y-6">
-              <h2 className="text-4xl md:text-5xl font-bold">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold">
                 Ready to join the movement?
               </h2>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
                 Trust isn't built overnight — but here, it starts with your college ID.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
@@ -295,9 +295,9 @@ const Index = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-border/50">
+      <footer className="py-8 sm:py-12 px-4 sm:px-6 border-t border-border/50">
         <div className="container mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+          <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-2">
               <Shield className="w-6 h-6 text-primary" />
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
