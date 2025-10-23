@@ -318,7 +318,13 @@ const Chat = () => {
                   const iv = parts[1];
                   const encryptedMessage = parts.slice(2).join(':'); // Join remaining parts
                   
-                  console.log("Attempting to decrypt message:", { keyId, iv: iv.substring(0, 10) + "...", chatId: chat.id });
+                  console.log("Attempting to decrypt message:", { 
+                    keyId, 
+                    iv: iv.substring(0, 10) + "...", 
+                    encryptedMessage: encryptedMessage.substring(0, 20) + "...",
+                    chatId: chat.id,
+                    fullMessage: msg.message.substring(0, 100) + "..."
+                  });
                   
                   const decryptedText = await encryptionService.decryptMessage(
                     encryptedMessage,
@@ -490,6 +496,59 @@ const Chat = () => {
     }
   };
 
+  // Method to clear all encrypted messages and start fresh
+  const clearEncryptedMessages = async () => {
+    if (!chat || !user) return;
+    
+    try {
+      console.log("Clearing all encrypted messages for chat:", chat.id);
+      
+      // Get all messages for this chat
+      const { data: messages, error } = await supabase
+        .from("messages")
+        .select("id, message")
+        .eq("chat_id", chat.id);
+      
+      if (error) throw error;
+      
+      // Find encrypted messages and delete them
+      const encryptedMessageIds = messages
+        .filter(msg => msg.message.startsWith('[ENCRYPTED:'))
+        .map(msg => msg.id);
+      
+      if (encryptedMessageIds.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("messages")
+          .delete()
+          .in("id", encryptedMessageIds);
+        
+        if (deleteError) throw deleteError;
+        
+        console.log(`Deleted ${encryptedMessageIds.length} encrypted messages`);
+      }
+      
+      // Clear chat key and regenerate
+      await encryptionService.clearChatKey(chat.id);
+      const participants = [chat.requester_id, chat.helper_id];
+      await encryptionService.generateChatKey(chat.id, participants);
+      
+      // Refresh messages
+      await fetchMessages();
+      
+      toast({
+        title: "Messages Cleared",
+        description: `Cleared ${encryptedMessageIds.length} corrupted encrypted messages. You can now send new messages.`,
+      });
+    } catch (error) {
+      console.error("Error clearing encrypted messages:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clear encrypted messages",
+        variant: "destructive",
+      });
+    }
+  };
+
   const markAsCompleted = async () => {
     if (!chat || !user) return;
     try {
@@ -578,15 +637,26 @@ const Chat = () => {
               </div>
             )}
             {isEncrypted && (
-              <Button 
-                onClick={fixEncryptionIssues} 
-                variant="outline" 
-                size="sm"
-                className="text-xs"
-              >
-                <Shield className="w-3 h-3 mr-1" />
-                Fix Encryption
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={fixEncryptionIssues} 
+                  variant="outline" 
+                  size="sm"
+                  className="text-xs"
+                >
+                  <Shield className="w-3 h-3 mr-1" />
+                  Fix Encryption
+                </Button>
+                <Button 
+                  onClick={clearEncryptedMessages} 
+                  variant="destructive" 
+                  size="sm"
+                  className="text-xs"
+                >
+                  <Shield className="w-3 h-3 mr-1" />
+                  Clear Corrupted
+                </Button>
+              </div>
             )}
             {chat?.tasks.status === "open" && (
               <Button onClick={markAsCompleted} className="bg-green-600 hover:bg-green-700">

@@ -332,21 +332,47 @@ export class EncryptionService {
 
   // Utility methods
   private arrayBufferToBase64(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
+    try {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+      
+      // Validate the result
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64)) {
+        throw new Error('Generated invalid base64');
+      }
+      
+      return base64;
+    } catch (error) {
+      console.error('Base64 encoding error:', error);
+      throw new Error(`Failed to encode to base64: ${error.message}`);
     }
-    return btoa(binary);
   }
 
   private base64ToArrayBuffer(base64: string): ArrayBuffer {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
+    try {
+      // Clean the base64 string (remove any whitespace or invalid characters)
+      const cleanBase64 = base64.replace(/[^A-Za-z0-9+/=]/g, '');
+      
+      // Validate base64 format
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(cleanBase64)) {
+        throw new Error('Invalid base64 format');
+      }
+      
+      const binary = atob(cleanBase64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes.buffer;
+    } catch (error) {
+      console.error('Base64 decoding error:', error);
+      console.error('Problematic base64 string:', base64.substring(0, 50) + '...');
+      throw new Error(`Failed to decode base64: ${error.message}`);
     }
-    return bytes.buffer;
   }
 
   // Clear all keys from memory (for security)
