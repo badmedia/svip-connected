@@ -83,6 +83,20 @@ export const UserChats = () => {
     try {
       setDeletingChatId(chatId);
       
+      // First, get the chat details and statistics
+      const { data: chatData } = await supabase
+        .from("chats")
+        .select("id, task_id, requester_id, helper_id")
+        .eq("id", chatId)
+        .single();
+
+      // Get message count before deletion for logging
+      const { count: messageCount } = await supabase
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .eq("chat_id", chatId);
+
+      // Delete the chat (this should cascade delete all messages and chat keys)
       const { error } = await supabase
         .from("chats")
         .delete()
@@ -92,12 +106,20 @@ export const UserChats = () => {
         throw error;
       }
 
+      // Log the deletion for security/audit purposes
+      console.log("Chat deleted:", {
+        chatId,
+        taskId: chatData?.task_id,
+        participants: [chatData?.requester_id, chatData?.helper_id],
+        messagesDeleted: messageCount || 0
+      });
+
       // Remove the chat from local state
       setChats(prevChats => prevChats.filter(chat => chat.id !== chatId));
       
       toast({
         title: "Chat deleted",
-        description: "The chat has been successfully deleted.",
+        description: `The chat and ${messageCount || 0} messages have been deleted.`,
       });
     } catch (error: any) {
       console.error("Error deleting chat:", error);
@@ -108,6 +130,34 @@ export const UserChats = () => {
       });
     } finally {
       setDeletingChatId(null);
+    }
+  };
+
+  // Cleanup orphaned messages (admin function)
+  const cleanupOrphanedMessages = async () => {
+    try {
+      // For now, we'll use a direct query instead of RPC
+      const { data, error } = await supabase
+        .from("messages")
+        .delete()
+        .not("chat_id", "in", `(SELECT id FROM chats)`);
+      
+      if (error) {
+        throw error;
+      }
+
+      console.log("Cleanup completed");
+      toast({
+        title: "Cleanup completed",
+        description: "Orphaned messages have been removed.",
+      });
+    } catch (error: any) {
+      console.error("Error cleaning up orphaned messages:", error);
+      toast({
+        title: "Error",
+        description: "Failed to cleanup orphaned messages.",
+        variant: "destructive",
+      });
     }
   };
 

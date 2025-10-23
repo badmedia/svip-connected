@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Send, Check, Shield, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Send, Check, Shield, ShieldCheck, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -591,6 +591,49 @@ const Chat = () => {
     }
   };
 
+  // Delete chat and all its messages
+  const deleteChat = async () => {
+    if (!chat || !user) return;
+    
+    try {
+      // Get message count before deletion
+      const { count: messageCount } = await supabase
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .eq("chat_id", chat.id);
+
+      // Delete the chat (cascade will delete all messages and chat keys)
+      const { error } = await supabase
+        .from("chats")
+        .delete()
+        .eq("id", chat.id);
+
+      if (error) throw error;
+
+      // Log the deletion
+      console.log("Chat deleted from chat interface:", {
+        chatId: chat.id,
+        taskId: chat.task_id,
+        messagesDeleted: messageCount || 0
+      });
+
+      toast({
+        title: "Chat deleted",
+        description: `The chat and ${messageCount || 0} messages have been deleted.`,
+      });
+
+      // Navigate back to dashboard
+      navigate("/");
+    } catch (error: any) {
+      console.error("Error deleting chat:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete chat. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -658,12 +701,23 @@ const Chat = () => {
                 </Button>
               </div>
             )}
-            {chat?.tasks.status === "open" && (
-              <Button onClick={markAsCompleted} className="bg-green-600 hover:bg-green-700">
-                <Check className="w-4 h-4 mr-2" />
-                Mark Completed
+            <div className="flex gap-2">
+              {chat?.tasks.status === "open" && (
+                <Button onClick={markAsCompleted} className="bg-green-600 hover:bg-green-700">
+                  <Check className="w-4 h-4 mr-2" />
+                  Mark Completed
+                </Button>
+              )}
+              <Button 
+                onClick={deleteChat} 
+                variant="destructive" 
+                size="sm"
+                className="text-xs"
+              >
+                <Trash2 className="w-3 h-3 mr-1" />
+                Delete Chat
               </Button>
-            )}
+            </div>
           </div>
         </div>
 
