@@ -269,6 +269,14 @@ const Chat = () => {
         await encryptionService.generateChatKey(chatData.id, participants);
       } else {
         console.log("Valid chat key found for:", chatData.id);
+        
+        // Test if the key actually works
+        const keyWorks = await encryptionService.testChatKey(chatData.id);
+        if (!keyWorks) {
+          console.warn("Chat key exists but doesn't work, regenerating for:", chatData.id);
+          await encryptionService.clearChatKey(chatData.id);
+          await encryptionService.generateChatKey(chatData.id, participants);
+        }
       }
 
       // Set encryption status
@@ -326,6 +334,15 @@ const Chat = () => {
                     fullMessage: msg.message.substring(0, 100) + "..."
                   });
                   
+                  // Check if we have a valid chat key before attempting decryption
+                  const keyInfo = await encryptionService.getChatKeyInfo(chat.id);
+                  console.log("Chat key info:", keyInfo);
+                  
+                  if (!keyInfo.exists) {
+                    console.warn("No chat key found for decryption");
+                    return { ...msg, message: "[Encrypted message - no decryption key available. Please refresh the page.]" };
+                  }
+                  
                   const decryptedText = await encryptionService.decryptMessage(
                     encryptedMessage,
                     chat.id,
@@ -346,14 +363,53 @@ const Chat = () => {
                   encryptedMessage: msg.message.substring(0, 50) + "..." 
                 });
                 
-                // If this is a persistent decryption failure, we might need to regenerate the chat key
-                // For now, show a more helpful message
-                return { ...msg, message: "[Encrypted message - decryption failed. Please refresh the page or start a new chat.]" };
+                // Check if this is a key-related error
+                if (decryptError.message.includes("No valid chat key found")) {
+                  return { ...msg, message: "[Encrypted message - decryption key missing. Please refresh the page.]" };
+                } else if (decryptError.message.includes("OperationError")) {
+                  // This is likely a key mismatch - the message was encrypted with a different key
+                  console.warn("OperationError detected - likely key mismatch for message:", msg.id);
+                  return { ...msg, message: "[Encrypted message - cannot decrypt. This message was encrypted with a different key or has corrupted data. Use 'Clear Corrupted' to remove it.]" };
+                } else if (decryptError.message.includes("Invalid IV length") || decryptError.message.includes("Invalid encrypted data length")) {
+                  return { ...msg, message: "[Encrypted message - corrupted data. Please use 'Clear Corrupted' to remove this message.]" };
+                } else {
+                  return { ...msg, message: "[Encrypted message - decryption failed. Please refresh the page or start a new chat.]" };
+                }
               }
             }
             return msg;
           })
         );
+        
+        // Check if we have a mix of successful and failed decryptions
+        const encryptedMessages = data.filter(msg => msg.message.startsWith('[ENCRYPTED:'));
+        const failedDecryptions = decryptedMessages.filter(msg => 
+          msg.message.includes('[Encrypted message -') && 
+          (msg.message.includes('key mismatch') || msg.message.includes('OperationError'))
+        );
+        const successfulDecryptions = decryptedMessages.filter(msg => 
+          !msg.message.includes('[Encrypted message -') && 
+          encryptedMessages.some(orig => orig.id === msg.id)
+        );
+        
+        if (encryptedMessages.length > 0) {
+          if (failedDecryptions.length === encryptedMessages.length) {
+            console.warn("All encrypted messages failed to decrypt - likely key mismatch for entire chat");
+            toast({
+              title: "Encryption Key Mismatch",
+              description: "All encrypted messages failed to decrypt. This usually means the encryption key has changed. Use 'Clear Corrupted' to remove old messages and start fresh.",
+              variant: "destructive",
+            });
+          } else if (failedDecryptions.length > 0 && successfulDecryptions.length > 0) {
+            console.warn("Mixed decryption results - some messages encrypted with different key");
+            toast({
+              title: "Mixed Encryption Keys",
+              description: `${failedDecryptions.length} messages failed to decrypt (likely encrypted with a different key), but ${successfulDecryptions.length} messages decrypted successfully. Use 'Clear Corrupted' to remove the problematic messages.`,
+              variant: "destructive",
+            });
+          }
+        }
+        
         setMessages(decryptedMessages);
       } else {
         setMessages([]);
@@ -472,25 +528,30 @@ const Chat = () => {
     try {
       console.log("Attempting to fix encryption issues for chat:", chat.id);
       
-      // Clear existing chat key
-      await encryptionService.clearChatKey(chat.id);
+      // Get current key info for debugging
+      const keyInfo = await encryptionService.getChatKeyInfo(chat.id);
+      console.log("Current key info before fix:", keyInfo);
       
-      // Regenerate chat key
+      // Use force regeneration to ensure a completely fresh key
       const participants = [chat.requester_id, chat.helper_id];
-      await encryptionService.generateChatKey(chat.id, participants);
+      await encryptionService.forceRegenerateChatKey(chat.id, participants);
+      
+      // Verify the new key works
+      const newKeyInfo = await encryptionService.getChatKeyInfo(chat.id);
+      console.log("New key info after fix:", newKeyInfo);
       
       // Refresh messages
       await fetchMessages();
       
       toast({
         title: "Encryption Fixed",
-        description: "Chat encryption has been reset. Try sending a new message.",
+        description: "Chat encryption has been completely reset. Try sending a new message.",
       });
     } catch (error) {
       console.error("Error fixing encryption:", error);
       toast({
         title: "Error",
-        description: "Failed to fix encryption issues",
+        description: "Failed to fix encryption issues. Please try clearing corrupted messages.",
         variant: "destructive",
       });
     }
@@ -527,10 +588,9 @@ const Chat = () => {
         console.log(`Deleted ${encryptedMessageIds.length} encrypted messages`);
       }
       
-      // Clear chat key and regenerate
-      await encryptionService.clearChatKey(chat.id);
+      // Clear chat key and regenerate with force regeneration
       const participants = [chat.requester_id, chat.helper_id];
-      await encryptionService.generateChatKey(chat.id, participants);
+      await encryptionService.forceRegenerateChatKey(chat.id, participants);
       
       // Refresh messages
       await fetchMessages();
@@ -544,6 +604,72 @@ const Chat = () => {
       toast({
         title: "Error",
         description: "Failed to clear encrypted messages",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Method to clear only the problematic encrypted messages (keep the ones that work)
+  const clearProblematicMessages = async () => {
+    if (!chat || !user) return;
+    
+    try {
+      console.log("Clearing only problematic encrypted messages for chat:", chat.id);
+      
+      // Get all messages for this chat
+      const { data: messages, error } = await supabase
+        .from("messages")
+        .select("id, message")
+        .eq("chat_id", chat.id);
+      
+      if (error) throw error;
+      
+      // Find encrypted messages and test which ones fail to decrypt
+      const encryptedMessages = messages.filter(msg => msg.message.startsWith('[ENCRYPTED:'));
+      const problematicMessageIds: string[] = [];
+      
+      for (const msg of encryptedMessages) {
+        try {
+          // Parse the encrypted message format: [ENCRYPTED:keyId:iv:encryptedMessage]
+          const parts = msg.message.substring(11).split(':');
+          if (parts.length >= 3) {
+            const keyId = parts[0];
+            const iv = parts[1];
+            const encryptedMessage = parts.slice(2).join(':');
+            
+            // Try to decrypt to see if it works
+            await encryptionService.decryptMessage(encryptedMessage, chat.id, iv);
+            console.log("Message decrypts successfully:", msg.id);
+          }
+        } catch (decryptError) {
+          console.log("Message fails to decrypt, marking for deletion:", msg.id);
+          problematicMessageIds.push(msg.id);
+        }
+      }
+      
+      if (problematicMessageIds.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("messages")
+          .delete()
+          .in("id", problematicMessageIds);
+        
+        if (deleteError) throw deleteError;
+        
+        console.log(`Deleted ${problematicMessageIds.length} problematic encrypted messages`);
+      }
+      
+      // Refresh messages
+      await fetchMessages();
+      
+      toast({
+        title: "Problematic Messages Cleared",
+        description: `Cleared ${problematicMessageIds.length} problematic encrypted messages. Messages that could be decrypted were kept.`,
+      });
+    } catch (error) {
+      console.error("Error clearing problematic messages:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clear problematic messages",
         variant: "destructive",
       });
     }
@@ -691,13 +817,22 @@ const Chat = () => {
                   Fix Encryption
                 </Button>
                 <Button 
+                  onClick={clearProblematicMessages} 
+                  variant="outline" 
+                  size="sm"
+                  className="text-xs"
+                >
+                  <Shield className="w-3 h-3 mr-1" />
+                  Clear Bad Messages
+                </Button>
+                <Button 
                   onClick={clearEncryptedMessages} 
                   variant="destructive" 
                   size="sm"
                   className="text-xs"
                 >
                   <Shield className="w-3 h-3 mr-1" />
-                  Clear Corrupted
+                  Clear All Encrypted
                 </Button>
               </div>
             )}

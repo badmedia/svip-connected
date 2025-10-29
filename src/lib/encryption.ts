@@ -140,11 +140,40 @@ export class EncryptionService {
   // Decrypt message
   async decryptMessage(encryptedMessage: string, chatId: string, iv: string): Promise<string> {
     try {
+      console.log("Starting decryption process for chat:", chatId);
+      
       // Ensure chat key exists
       await this.ensureChatKey(chatId);
       const chatKey = await this.getChatKey(chatId);
+      
+      console.log("Chat key retrieved successfully");
+      
+      // Validate inputs
+      if (!encryptedMessage || !iv) {
+        throw new Error("Missing encrypted message or IV");
+      }
+      
       const encryptedBuffer = this.base64ToArrayBuffer(encryptedMessage);
       const ivBuffer = this.base64ToArrayBuffer(iv);
+      
+      console.log("Base64 decoding successful, buffer sizes:", {
+        encrypted: encryptedBuffer.byteLength,
+        iv: ivBuffer.byteLength,
+        encryptedBase64: encryptedMessage.substring(0, 50) + "...",
+        ivBase64: iv.substring(0, 20) + "..."
+      });
+      
+      // Validate IV length (should be 12 bytes for AES-GCM)
+      if (ivBuffer.byteLength !== 12) {
+        throw new Error(`Invalid IV length: ${ivBuffer.byteLength} bytes (expected 12)`);
+      }
+      
+      // Validate encrypted data length (should be at least 16 bytes for AES-GCM with auth tag)
+      if (encryptedBuffer.byteLength < 16) {
+        throw new Error(`Invalid encrypted data length: ${encryptedBuffer.byteLength} bytes (minimum 16)`);
+      }
+      
+      console.log("Input validation passed, attempting decryption...");
       
       const decrypted = await crypto.subtle.decrypt(
         { name: "AES-GCM", iv: ivBuffer },
@@ -152,10 +181,34 @@ export class EncryptionService {
         encryptedBuffer
       );
 
-      return new TextDecoder().decode(decrypted);
+      const result = new TextDecoder().decode(decrypted);
+      console.log("Decryption successful, result length:", result.length);
+      return result;
     } catch (error) {
       console.error("Error decrypting message:", error);
-      throw new Error("Failed to decrypt message");
+      console.error("Decryption details:", {
+        chatId,
+        encryptedMessageLength: encryptedMessage?.length,
+        ivLength: iv?.length,
+        errorName: error.name,
+        errorMessage: error.message,
+        encryptedPreview: encryptedMessage?.substring(0, 100),
+        ivPreview: iv?.substring(0, 50)
+      });
+      
+      // Check if this is a key mismatch issue
+      if (error.name === 'OperationError') {
+        console.error("OperationError detected - likely key mismatch or corrupted data");
+        // Try to get key info for debugging
+        try {
+          const keyInfo = await this.getChatKeyInfo(chatId);
+          console.error("Key info during error:", keyInfo);
+        } catch (keyError) {
+          console.error("Failed to get key info:", keyError);
+        }
+      }
+      
+      throw new Error(`Failed to decrypt message: ${error.message}`);
     }
   }
 
@@ -233,6 +286,14 @@ export class EncryptionService {
       if (!storedKey) {
         // Generate new key if none exists
         await this.generateChatKey(chatId, []);
+      } else {
+        // Try to load the existing key
+        try {
+          await this.getChatKey(chatId);
+        } catch (error) {
+          console.warn("Failed to load existing chat key, generating new one:", error);
+          await this.generateChatKey(chatId, []);
+        }
       }
     }
   }
@@ -248,6 +309,12 @@ export class EncryptionService {
       const storedKey = localStorage.getItem(`chat_key_${chatId}`);
       if (storedKey) {
         const keyData = JSON.parse(storedKey);
+        
+        // Validate key data structure
+        if (!keyData.key || typeof keyData.key !== 'string') {
+          throw new Error('Invalid key data structure');
+        }
+        
         const key = await crypto.subtle.importKey(
           "raw",
           this.base64ToArrayBuffer(keyData.key),
@@ -256,36 +323,17 @@ export class EncryptionService {
           ["encrypt", "decrypt"]
         );
         this.chatKeys.set(chatId, key);
+        console.log("Successfully loaded chat key from localStorage for:", chatId);
         return key;
       }
     } catch (error) {
       console.warn("Failed to load chat key from localStorage:", error);
+      // Clear corrupted key data
+      localStorage.removeItem(`chat_key_${chatId}`);
     }
 
-    // Generate new key only if none exists
-    const key = await crypto.subtle.generateKey(
-      { name: "AES-GCM", length: 256 },
-      true,
-      ["encrypt", "decrypt"]
-    );
-
-    // Store the key for future use
-    this.chatKeys.set(chatId, key);
-    
-    // Save to localStorage
-    try {
-      const exportedKey = await crypto.subtle.exportKey("raw", key);
-      const keyData = {
-        key: this.arrayBufferToBase64(exportedKey),
-        chatId,
-        timestamp: Date.now()
-      };
-      localStorage.setItem(`chat_key_${chatId}`, JSON.stringify(keyData));
-    } catch (error) {
-      console.warn("Failed to save chat key to localStorage:", error);
-    }
-
-    return key;
+    // Only generate new key if explicitly requested (not for decryption)
+    throw new Error(`No valid chat key found for chat: ${chatId}. Please regenerate the chat key.`);
   }
 
   // Clear chat key (for debugging/regeneration)
@@ -299,6 +347,46 @@ export class EncryptionService {
   async regenerateChatKey(chatId: string, participants: string[]): Promise<string> {
     await this.clearChatKey(chatId);
     return await this.generateChatKey(chatId, participants);
+  }
+
+  // Check if a chat key is valid and can decrypt messages
+  async validateChatKey(chatId: string): Promise<boolean> {
+    try {
+      const key = await this.getChatKey(chatId);
+      return key !== null;
+    } catch (error) {
+      console.warn("Chat key validation failed:", error);
+      return false;
+    }
+  }
+
+  // Get chat key info for debugging
+  async getChatKeyInfo(chatId: string): Promise<{
+    exists: boolean;
+    inMemory: boolean;
+    inLocalStorage: boolean;
+    timestamp?: number;
+  }> {
+    const inMemory = this.chatKeys.has(chatId);
+    const storedKey = localStorage.getItem(`chat_key_${chatId}`);
+    const inLocalStorage = !!storedKey;
+    
+    let timestamp: number | undefined;
+    if (storedKey) {
+      try {
+        const keyData = JSON.parse(storedKey);
+        timestamp = keyData.timestamp;
+      } catch (error) {
+        console.warn("Failed to parse stored key data:", error);
+      }
+    }
+    
+    return {
+      exists: inMemory || inLocalStorage,
+      inMemory,
+      inLocalStorage,
+      timestamp
+    };
   }
 
   // Check if chat key exists and is valid
@@ -326,7 +414,66 @@ export class EncryptionService {
       return false;
     } catch (error) {
       console.error("Error checking chat key validity:", error);
+      // If the key is corrupted, remove it
+      localStorage.removeItem(`chat_key_${chatId}`);
       return false;
+    }
+  }
+
+  // Test if a chat key can actually decrypt a test message
+  async testChatKey(chatId: string): Promise<boolean> {
+    try {
+      const key = await this.getChatKey(chatId);
+      if (!key) return false;
+      
+      // Create a test message
+      const testMessage = "test";
+      const encodedMessage = new TextEncoder().encode(testMessage);
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      
+      // Encrypt test message
+      const encrypted = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: iv.buffer },
+        key,
+        encodedMessage
+      );
+      
+      // Try to decrypt it
+      const decrypted = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: iv.buffer },
+        key,
+        encrypted
+      );
+      
+      const result = new TextDecoder().decode(decrypted);
+      return result === testMessage;
+    } catch (error) {
+      console.error("Chat key test failed:", error);
+      return false;
+    }
+  }
+
+  // Force regenerate chat key and clear all encrypted messages
+  async forceRegenerateChatKey(chatId: string, participants: string[]): Promise<void> {
+    try {
+      console.log("Force regenerating chat key for:", chatId);
+      
+      // Clear existing key
+      await this.clearChatKey(chatId);
+      
+      // Generate new key
+      await this.generateChatKey(chatId, participants);
+      
+      // Test the new key
+      const keyWorks = await this.testChatKey(chatId);
+      if (!keyWorks) {
+        throw new Error("New chat key test failed");
+      }
+      
+      console.log("Chat key force regeneration successful");
+    } catch (error) {
+      console.error("Error force regenerating chat key:", error);
+      throw error;
     }
   }
 
@@ -362,7 +509,10 @@ export class EncryptionService {
         throw new Error('Invalid base64 format');
       }
       
-      const binary = atob(cleanBase64);
+      // Ensure proper padding
+      const paddedBase64 = cleanBase64 + '='.repeat((4 - cleanBase64.length % 4) % 4);
+      
+      const binary = atob(paddedBase64);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) {
         bytes[i] = binary.charCodeAt(i);
@@ -371,6 +521,7 @@ export class EncryptionService {
     } catch (error) {
       console.error('Base64 decoding error:', error);
       console.error('Problematic base64 string:', base64.substring(0, 50) + '...');
+      console.error('Clean base64 string:', base64.replace(/[^A-Za-z0-9+/=]/g, '').substring(0, 50) + '...');
       throw new Error(`Failed to decode base64: ${error.message}`);
     }
   }
